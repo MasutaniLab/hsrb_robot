@@ -1,14 +1,9 @@
 <package format="3">
   <name>hsrb_bringup</name>
-  <version>2.1.0</version>
+  <version>2.2.0</version>
   <description>The hsrb bringup scripts.</description>
 
   <maintainer email="xr-hsr-support@mail.toyota.co.jp">HSR Support</maintainer>
-
-  <author>Hiroaki Yaguchi</author>
-  <author>Keisuke Takeshita</author>
-  <author>Masayuki Masuda</author>
-  <author>Tomohiro Ono</author>
 
   <license>BSD 3-clause Clear License</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -16,27 +11,32 @@
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>depth_image_proc</exec_depend>
   <exec_depend>diagnostic_aggregator</exec_depend>
+  <exec_depend>hsrb_align</exec_depend>
+  <exec_depend>hsrb_auto_diagnostics</exec_depend>
   <exec_depend>hsrb_base_controllers</exec_depend>
   <exec_depend>hsrb_bumper</exec_depend>
   <exec_depend>hsrb_diagnostic_broadcaster</exec_depend>
   <exec_depend>hsrb_digital_io</exec_depend>
   <exec_depend>hsrb_gripper_controller</exec_depend>
-  <exec_depend>hsrb_joystick_teleop</exec_depend>
+  <exec_depend>hsrb_imu_sensor_protocol</exec_depend>
+  <exec_depend>hsrb_status_led</exec_depend>
   <exec_depend>hsrb_power_ecu</exec_depend>
-  <exec_depend>hsrb_pseudo_endeffector_controller</exec_depend>
   <exec_depend>hsrb_robot_hardware</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>joint_trajectory_controller</exec_depend>
-  <exec_depend>joy_linux</exec_depend>
   <exec_depend>openni2_camera</exec_depend>
   <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>ros2controlcli</exec_depend>
   <exec_depend>ros2launch</exec_depend>
+  <exec_depend>ros2_laser_scan_matcher</exec_depend>
+  <exec_depend>tmc_depth_calibration</exec_depend>
   <exec_depend>tmc_dynpick_driver</exec_depend>
   <exec_depend>tmc_imu_diag_updater</exec_depend>
   <exec_depend>tmc_launch_ros_utils</exec_depend>
-  <exec_depend>tmc_pseudo_velocity_controller</exec_depend>
+  <exec_depend>tmc_odometry_switcher</exec_depend>
+  <exec_depend>tmc_pgr_camera</exec_depend>
+  <exec_depend>tmc_realtime_controllers</exec_depend>
   <exec_depend>tmc_sanyo_battery</exec_depend>
   <exec_depend>tmc_talk_hoya_py</exec_depend>
   <exec_depend>urg_node</exec_depend>

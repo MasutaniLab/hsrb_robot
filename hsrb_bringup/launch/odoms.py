@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-# Copyright (c) 2024 TOYOTA MOTOR CORPORATION
+#!/usr/bin/env python3
+# Copyright (c) 2025 TOYOTA MOTOR CORPORATION
 # All rights reserved.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted (subject to the limitations in the disclaimer
@@ -24,46 +24,28 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 # DAMAGE.
-# -*- coding: utf-8 -*-
 from launch import LaunchDescription
-
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import (
-    LaunchConfiguration,
-    PathJoinSubstitution,
-)
-
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
-
-
-def declare_arguments():
-    declared_arguments = []
-    declared_arguments.append(
-        DeclareLaunchArgument('runtime_config_package',
-                              default_value='hsrb_bringup',
-                              description='Package with the camera\'s configuration in "config" folder.'))
-    declared_arguments.append(
-        DeclareLaunchArgument('parameter_file',
-                              description='YAML file with the camera configuration.'))
-    declared_arguments.append(
-        DeclareLaunchArgument('camera_name',
-                              default_value='camera',
-                              description='Camera\'s name used for namespace.'))
-
-    return declared_arguments
 
 
 def generate_launch_description():
-    runtime_config_package = LaunchConfiguration('runtime_config_package')
-    parameter_file = LaunchConfiguration('parameter_file')
-    camera_parameter = PathJoinSubstitution([FindPackageShare(runtime_config_package), 'config', parameter_file])
+    laser_scan_matcher = Node(
+        package='ros2_laser_scan_matcher',
+        executable='laser_scan_matcher',
+        name='laser_scan_matcher',
+        remappings=[('odom', 'laser_odom'),
+                    ('scan', 'scan')],
+        parameters=[{'laser_frame': 'base_range_sensor_link',
+                     'publish_odom': 'laser_odom'}])
 
-    camera_name = LaunchConfiguration('camera_name')
-    camera_node = Node(package='usb_cam',
-                       executable='usb_cam_node_exe',
-                       name='driver',
-                       parameters=[camera_parameter],
-                       namespace=camera_name)
+    odometry_switcher = Node(
+        package='tmc_odometry_switcher',
+        executable='odometry_switcher',
+        name='odometry_switcher',
+        parameters=[{'odom_topics': {'laser_odom': 'laser_odom',
+                                     'wheel_odom': 'omni_base_controller/wheel_odom'},
+                     'initial_odom': 'laser_odom',
+                     'odom_frame': 'odom',
+                     'odom_child_frame': 'base_footprint'}])
 
-    return LaunchDescription(declare_arguments() + [camera_node])
+    return LaunchDescription([laser_scan_matcher, odometry_switcher])

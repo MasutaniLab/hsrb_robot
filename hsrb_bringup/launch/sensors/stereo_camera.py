@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2024 TOYOTA MOTOR CORPORATION
+# Copyright (c) 2025 TOYOTA MOTOR CORPORATION
 # All rights reserved.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted (subject to the limitations in the disclaimer
@@ -27,43 +27,42 @@
 # -*- coding: utf-8 -*-
 from launch import LaunchDescription
 
-from launch.actions import DeclareLaunchArgument
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+)
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
 )
 
-from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def declare_arguments():
     declared_arguments = []
-    declared_arguments.append(
-        DeclareLaunchArgument('runtime_config_package',
-                              default_value='hsrb_bringup',
-                              description='Package with the camera\'s configuration in "config" folder.'))
-    declared_arguments.append(
-        DeclareLaunchArgument('parameter_file',
-                              description='YAML file with the camera configuration.'))
-    declared_arguments.append(
-        DeclareLaunchArgument('camera_name',
-                              default_value='camera',
-                              description='Camera\'s name used for namespace.'))
+    declared_arguments.append(DeclareLaunchArgument('frame_id', default_value='head_l_stereo_camera_frame'))
+    declared_arguments.append(DeclareLaunchArgument('camera_setting_file_path',
+                              default_value='/etc/opt/tmc/robot/conf.d/stereo_pgr_camera.yml'))
+    declared_arguments.append(DeclareLaunchArgument('image_topic_names',
+                              default_value='["/head_l_stereo_camera/image_raw", "/head_r_stereo_camera/image_raw"]'))
+    declared_arguments.append(DeclareLaunchArgument('use_blackfly', default_value='True'))
 
     return declared_arguments
 
 
 def generate_launch_description():
-    runtime_config_package = LaunchConfiguration('runtime_config_package')
-    parameter_file = LaunchConfiguration('parameter_file')
-    camera_parameter = PathJoinSubstitution([FindPackageShare(runtime_config_package), 'config', parameter_file])
+    pgr_launch_dir = PathJoinSubstitution([FindPackageShare('tmc_pgr_camera'), 'launch'])
+    stereo_camera_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([pgr_launch_dir, '/stereo.launch.py']),
+        launch_arguments={
+            'node_name': 'stereo_camera',
+            'frame_id': LaunchConfiguration('frame_id'),
+            'camera_setting_file_path': LaunchConfiguration('camera_setting_file_path'),
+            'image_topic_names': LaunchConfiguration('image_topic_names'),
+            'use_blackfly': LaunchConfiguration('use_blackfly'),
+        }.items())
 
-    camera_name = LaunchConfiguration('camera_name')
-    camera_node = Node(package='usb_cam',
-                       executable='usb_cam_node_exe',
-                       name='driver',
-                       parameters=[camera_parameter],
-                       namespace=camera_name)
-
-    return LaunchDescription(declare_arguments() + [camera_node])
+    ld = LaunchDescription(declare_arguments() + [stereo_camera_node])
+    return ld

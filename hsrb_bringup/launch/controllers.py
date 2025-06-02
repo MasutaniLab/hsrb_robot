@@ -1,32 +1,32 @@
 #!/usr/bin/env python
-'''
-Copyright (c) 2024 TOYOTA MOTOR CORPORATION
-All rights reserved.
-Redistribution and use in source and binary forms, with or without
-modification, are permitted (subject to the limitations in the disclaimer
-below) provided that the following conditions are met:
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-* Neither the name of the copyright holder nor the names of its contributors may be used
-  to endorse or promote products derived from this software without specific
-  prior written permission.
-NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS
-LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
-DAMAGE.
-'''
+# Copyright (c) 2024 TOYOTA MOTOR CORPORATION
+# All rights reserved.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted (subject to the limitations in the disclaimer
+# below) provided that the following conditions are met:
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+# * Neither the name of the copyright holder nor the names of its contributors may be used
+#   to endorse or promote products derived from this software without specific
+#   prior written permission.
+# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS
+# LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+# OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+# DAMAGE.
 # -*- coding: utf-8 -*-
+import os
+
 from launch import LaunchDescription
 
 from launch.actions import DeclareLaunchArgument
@@ -43,10 +43,12 @@ from launch_ros.substitutions import FindPackageShare
 import yaml
 
 
+# TODO(Takeshita) パラメータにする
 _JOINT_POSITION_OFFSET_FILE = '/etc/opt/tmc/robot/conf.d/calib_results/joint_position_offset.yaml'
 
 
 def load_robot_description():
+    # TODO(Takeshita) hsrb/c_robot_descriptionでやる, 現状のupload_hsrb/c.launchのように
     description_package = LaunchConfiguration('description_package')
     description_file = LaunchConfiguration('description_file')
     robot_description_content = Command(
@@ -56,6 +58,7 @@ def load_robot_description():
 
 
 def load_joint_offset():
+    # TODO(Takeshita) キャリブレーション結果の出力フォーマットを変更すべき
     with open(_JOINT_POSITION_OFFSET_FILE, 'r') as fp:
         offset_input = yaml.safe_load(fp)
     offset_output = {}
@@ -101,8 +104,11 @@ def generate_launch_description():
     control_node = Node(package='controller_manager',
                         executable='ros2_control_node',
                         parameters=[robot_description, robot_controllers, load_joint_offset()],
-                        remappings=[('odom', '~/wheel_odom')])
+                        remappings=[('odom', 'switched_odom'),
+                                    ('gpio/output0', 'switch_led'),
+                                    ('gpio/input0', 'switch_input')])
 
+    # TODO(Takeshita) /robot_descriptionがあるべきなのでこうしたが，複数ロボット対応等が面倒になる
     joint_state_publisher = Node(package='joint_state_publisher',
                                  executable='joint_state_publisher',
                                  parameters=[{'source_list': ['/joint_states']}],
@@ -114,22 +120,27 @@ def generate_launch_description():
                                 namespace='whole_body',
                                 output={'both': 'log'},
                                 remappings=[('robot_description', '/robot_description')])
-    wheel_odom_connector_tf = Node(package='tf2_ros',
-                                   executable='static_transform_publisher',
-                                   name='static_transform_publisher',
-                                   output='log',
-                                   arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0',
-                                              'base_footprint_wheel', 'base_footprint'])
 
     nodes = [control_node,
              joint_state_publisher,
              robot_state_pub_node,
-             wheel_odom_connector_tf,
              create_spanwer_node('joint_state_broadcaster'),
              create_spanwer_node('head_trajectory_controller'),
              create_spanwer_node('arm_trajectory_controller'),
              create_spanwer_node('gripper_controller'),
              create_spanwer_node('omni_base_controller'),
-             create_spanwer_node('servo_diagnostic_broadcaster')]
+             create_spanwer_node('servo_diagnostic_broadcaster'),
+             create_spanwer_node('drive_mode_controller'),
+             create_spanwer_node('servo_state_controller'),
+             create_spanwer_node('servo_parameter_reader'),
+             create_spanwer_node('servo_parameter_writer'),
+             ]
+
+    robot_version = os.environ.get("ROBOT_VERSION")
+    robot_name = robot_version.replace('"', '').split('-')[0].lower()
+
+    if robot_name in 'hsrc':
+        nodes.extend([create_spanwer_node('tmc_digital_input_controller'),
+                      create_spanwer_node('tmc_digital_output_controller')])
 
     return LaunchDescription(declare_arguments() + nodes)

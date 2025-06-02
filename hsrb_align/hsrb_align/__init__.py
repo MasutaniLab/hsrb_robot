@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# Copyright (c) 2024 TOYOTA MOTOR CORPORATION
+# Copyright (c) 2025 TOYOTA MOTOR CORPORATION
 # All rights reserved.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted (subject to the limitations in the disclaimer
@@ -24,40 +23,3 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 # OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 # DAMAGE.
-# -*- coding: utf-8 -*-
-from launch import LaunchDescription
-
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import (
-    LaunchConfiguration,
-    PathJoinSubstitution,
-)
-
-from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
-
-
-def declare_arguments():
-    declared_arguments = []
-    declared_arguments.append(
-        DeclareLaunchArgument('runtime_config_package',
-                              default_value='hsrb_bringup',
-                              description='Package with the urg\'s configuration in "config" folder.'))
-    declared_arguments.append(
-        DeclareLaunchArgument('parameter_file',
-                              default_value='urg.yaml',
-                              description='YAML file with the urg configuration.'))
-    return declared_arguments
-
-
-def generate_launch_description():
-    runtime_config_package = LaunchConfiguration('runtime_config_package')
-    parameter_file = LaunchConfiguration('parameter_file')
-    urg_parameter = PathJoinSubstitution([FindPackageShare(runtime_config_package), 'config', parameter_file])
-
-    urg_node = Node(package='urg_node',
-                    executable='urg_node_driver',
-                    name='urg_node',
-                    parameters=[urg_parameter])
-
-    return LaunchDescription(declare_arguments() + [urg_node])

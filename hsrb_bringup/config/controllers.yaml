@@ -11,8 +11,32 @@ controller_manager:
       type: hsrb_gripper_controller/HrhGripperController
     omni_base_controller:
       type: hsrb_base_controllers/OmniBaseController
+    drive_mode_controller:
+      type: tmc_realtime_controllers/ExxxDriveModeController
+    servo_state_controller:
+      type: tmc_realtime_controllers/ServoStateBroadcaster
+    servo_parameter_reader:
+      type: tmc_realtime_controllers/InfrequentReadingController
+    servo_parameter_writer:
+      type: tmc_realtime_controllers/InfrequentWritingController
     servo_diagnostic_broadcaster:
       type: hsrb_diagnostic_broadcaster/ServoDiagnosticBroadcaster
+    tmc_digital_input_controller:
+      type: tmc_realtime_controllers/DigitalInputController
+    tmc_digital_output_controller:
+      type: tmc_realtime_controllers/DigitalOutputController
+
+tmc_digital_input_controller:
+  ros__parameters:
+    state_interface_name: "pin0/state"
+    topic_name: "gpio/input0"
+    inverse_mode: false
+
+tmc_digital_output_controller:
+  ros__parameters:
+    command_interface_name: "pin4/command"
+    topic_name: "gpio/output0"
+    default_output: false
 
 hsrb_hw:
   ros__parameters:
@@ -63,9 +87,12 @@ gripper_controller:
     left_spring_joint: hand_l_spring_proximal_joint
     right_spring_joint: hand_r_spring_proximal_joint
     open_loop_control: true
+    do_output_position_control : true
+    position_control_current_min : -1.0
 
 omni_base_controller:
   ros__parameters:
+    use_base_roll_velocity: true
     joints:
       l_wheel: base_l_drive_wheel_joint
       r_wheel: base_r_drive_wheel_joint
@@ -87,3 +114,59 @@ omni_base_controller:
       odom_t: {trajectory: 0.1}
     open_loop_control: true
 
+servo_parameter_writer:
+  ros__parameters:
+    denied_keys:
+      - const_id
+      - command_write_nvm
+    attribute: writer
+    joints:
+      - arm_lift_joint
+      - arm_flex_joint
+      - arm_roll_joint
+      - wrist_flex_joint
+      - wrist_roll_joint
+      - head_tilt_joint
+      - head_pan_joint
+      - hand_motor_joint
+
+servo_parameter_reader:
+  ros__parameters:
+    joints:
+      - arm_lift_joint
+      - arm_flex_joint
+      - arm_roll_joint
+      - wrist_flex_joint
+      - wrist_roll_joint
+      - head_tilt_joint
+      - head_pan_joint
+      - hand_motor_joint
+    attribute: reader
+
+drive_mode_controller:
+  ros__parameters:
+    joints:
+      - arm_lift_joint
+      - arm_flex_joint
+      - arm_roll_joint
+      - wrist_flex_joint
+      - wrist_roll_joint
+      - head_tilt_joint
+      - head_pan_joint
+    publish_rate : 10.0
+
+servo_state_controller:
+  ros__parameters:
+    joints:
+      - arm_lift_joint
+      - arm_flex_joint
+      - arm_roll_joint
+      - wrist_flex_joint
+      - wrist_roll_joint
+      - head_tilt_joint
+      - head_pan_joint
+      - hand_motor_joint
+      - base_l_drive_wheel_joint
+      - base_r_drive_wheel_joint
+      - base_roll_joint
+    publish_rate : 30.0

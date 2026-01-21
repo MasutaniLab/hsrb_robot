@@ -48,7 +48,8 @@ def generate_launch_description():
         return LaunchDescription([
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/hsr_base.py']),
-                launch_arguments={'use_head_center_camera': 'False',
+                launch_arguments={'robot_specific_controllers_file': 'controllers_hsrc.yaml',
+                                  'use_head_center_camera': 'False',
                                   'use_blackfly': 'True',
                                   'description_package': 'hsrc_description',
                                   'description_file': 'hsrc1s.urdf.xacro',

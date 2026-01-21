@@ -54,6 +54,11 @@ def declare_arguments():
     declared_arguments.append(DeclareLaunchArgument('description_file', default_value='hsrb4s.urdf.xacro',
                                                     description='URDF/XACRO description file with the robot.'))
 
+    declared_arguments.append(
+        DeclareLaunchArgument('robot_specific_controllers_file',
+                              default_value='controllers_hsrb.yaml',
+                              description='YAML file with the robot specific controllers configuration.'))
+
     declared_arguments.append(DeclareLaunchArgument('use_head_center_camera', default_value='True',
                                                     description='If true, the head center camara is active.'))
     declared_arguments.append(DeclareLaunchArgument('use_blackfly', default_value='True'))
@@ -65,11 +70,13 @@ def declare_arguments():
 
 
 def generate_launch_description():
-    # If the node has a parameter_file, it will be overwritten unless specified in launch_arguments
+    # If a node has a parameter_file, it will be overwritten unless specified in launch_arguments
     controllers = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/controllers.py']),
-        launch_arguments={'description_package': LaunchConfiguration('description_package'),
-                          'description_file': LaunchConfiguration('description_file')}.items())
+        launch_arguments={
+            'description_package': LaunchConfiguration('description_package'),
+            'description_file': LaunchConfiguration('description_file'),
+            'robot_specific_controllers_file': LaunchConfiguration('robot_specific_controllers_file')}.items())
     odom = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/odoms.py']))
 

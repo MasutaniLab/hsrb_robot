@@ -31,8 +31,6 @@ from launch import LaunchDescription
 
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import (
-    Command,
-    FindExecutable,
     LaunchConfiguration,
     PathJoinSubstitution,
 )
@@ -40,21 +38,17 @@ from launch.substitutions import (
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+from tmc_launch_ros_utils.ros2_control import (
+    create_spawner_node,
+    set_on_process_exit_event_handler,
+)
+from tmc_launch_ros_utils.tmc_launch_ros_utils import load_robot_description
+
 import yaml
 
 
 # TODO(Takeshita) パラメータにする
 _JOINT_POSITION_OFFSET_FILE = '/etc/opt/tmc/robot/conf.d/calib_results/joint_position_offset.yaml'
-
-
-def load_robot_description():
-    # TODO(Takeshita) hsrb/c_robot_descriptionでやる, 現状のupload_hsrb/c.launchのように
-    description_package = LaunchConfiguration('description_package')
-    description_file = LaunchConfiguration('description_file')
-    robot_description_content = Command(
-        [PathJoinSubstitution([FindExecutable(name='xacro')]), ' ',
-         PathJoinSubstitution([FindPackageShare(description_package), 'robots', description_file])])
-    return {'robot_description': robot_description_content}
 
 
 def load_joint_offset():
@@ -67,12 +61,6 @@ def load_joint_offset():
     return {'position_offset': offset_output}
 
 
-def create_spanwer_node(controller_name, manager_name='/controller_manager'):
-    return Node(package='controller_manager',
-                executable='spawner',
-                arguments=[controller_name, '--controller-manager', manager_name])
-
-
 def declare_arguments():
     declared_arguments = []
     declared_arguments.append(
@@ -80,9 +68,13 @@ def declare_arguments():
                               default_value='hsrb_bringup',
                               description='Package with the controller\'s configuration in "config" folder.'))
     declared_arguments.append(
-        DeclareLaunchArgument('controllers_file',
+        DeclareLaunchArgument('common_controllers_file',
                               default_value='controllers.yaml',
-                              description='YAML file with the controllers configuration.'))
+                              description='YAML file with the common controllers configuration.'))
+    declared_arguments.append(
+        DeclareLaunchArgument('robot_specific_controllers_file',
+                              default_value='controllers_hsrb.yaml',
+                              description='YAML file with the robot specific controllers configuration.'))
 
     declared_arguments.append(
         DeclareLaunchArgument('description_package',
@@ -99,11 +91,18 @@ def generate_launch_description():
     robot_description = load_robot_description()
 
     runtime_config_package = LaunchConfiguration('runtime_config_package')
-    controllers_file = LaunchConfiguration('controllers_file')
-    robot_controllers = PathJoinSubstitution([FindPackageShare(runtime_config_package), 'config', controllers_file])
+    common_controllers_file = LaunchConfiguration('common_controllers_file')
+    common_controllers = PathJoinSubstitution([
+        FindPackageShare(runtime_config_package), 'config', common_controllers_file])
+
+    robot_specific_controllers_file = LaunchConfiguration('robot_specific_controllers_file')
+    robot_specific_controllers = PathJoinSubstitution([
+        FindPackageShare(runtime_config_package), 'config', robot_specific_controllers_file])
+
     control_node = Node(package='controller_manager',
                         executable='ros2_control_node',
-                        parameters=[robot_description, robot_controllers, load_joint_offset()],
+                        parameters=[robot_description, common_controllers, robot_specific_controllers,
+                                    load_joint_offset()],
                         remappings=[('odom', 'switched_odom'),
                                     ('gpio/output0', 'switch_led'),
                                     ('gpio/input0', 'switch_input')])
@@ -121,26 +120,30 @@ def generate_launch_description():
                                 output={'both': 'log'},
                                 remappings=[('robot_description', '/robot_description')])
 
+    motion_command_limitter_controller_spawner = create_spawner_node('motion_command_limitter_controller')
+    omni_base_controller_spawner = create_spawner_node('omni_base_controller')
     nodes = [control_node,
              joint_state_publisher,
              robot_state_pub_node,
-             create_spanwer_node('joint_state_broadcaster'),
-             create_spanwer_node('head_trajectory_controller'),
-             create_spanwer_node('arm_trajectory_controller'),
-             create_spanwer_node('gripper_controller'),
-             create_spanwer_node('omni_base_controller'),
-             create_spanwer_node('servo_diagnostic_broadcaster'),
-             create_spanwer_node('drive_mode_controller'),
-             create_spanwer_node('servo_state_controller'),
-             create_spanwer_node('servo_parameter_reader'),
-             create_spanwer_node('servo_parameter_writer'),
+             create_spawner_node('joint_state_broadcaster'),
+             create_spawner_node('head_trajectory_controller'),
+             create_spawner_node('arm_trajectory_controller'),
+             create_spawner_node('gripper_controller'),
+             motion_command_limitter_controller_spawner,
+             set_on_process_exit_event_handler(motion_command_limitter_controller_spawner.actions[0],
+                                               omni_base_controller_spawner.actions),
+             create_spawner_node('servo_diagnostic_broadcaster'),
+             create_spawner_node('drive_mode_controller'),
+             create_spawner_node('servo_state_controller'),
+             create_spawner_node('servo_parameter_reader'),
+             create_spawner_node('servo_parameter_writer'),
              ]
 
     robot_version = os.environ.get("ROBOT_VERSION")
     robot_name = robot_version.replace('"', '').split('-')[0].lower()
 
     if robot_name in 'hsrc':
-        nodes.extend([create_spanwer_node('tmc_digital_input_controller'),
-                      create_spanwer_node('tmc_digital_output_controller')])
+        nodes.extend([create_spawner_node('tmc_digital_input_controller'),
+                      create_spawner_node('tmc_digital_output_controller')])
 
     return LaunchDescription(declare_arguments() + nodes)

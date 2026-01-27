@@ -27,6 +27,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import time
 
 from controller_manager_msgs.srv import ListControllers
 from hsrb_angle_sensors_alignment_msgs.action import AlignAngleSensors
@@ -39,14 +40,14 @@ from tmc_manipulation_msgs.srv import SafeJointChange
 
 global align_angle_sensors_response
 
-# Called when receiving the response from align_angle_sensors
+# Called when receiving the response of align_angle_sensors
 
 
 def action_align_angle_sensors_response(future):
     goal_handle = future.result()
     if not goal_handle.accepted:
         return
-    # Get the result
+    # Retrieve the result
     result_future = goal_handle.get_result_async()
     result_future.add_done_callback(action_align_angle_sensors_result)
     return
@@ -150,7 +151,6 @@ def wait_for_controllers(node, timeout=10.0):
         node.get_logger().error('safe_pose_changer service is not found')
         return False
 
-    rate = node.create_rate(10, node.get_clock())
     using_controllers = {'arm_trajectory_controller',
                          'head_trajectory_controller',
                          'gripper_controller',
@@ -167,7 +167,7 @@ def wait_for_controllers(node, timeout=10.0):
                 [controller.name for controller in ret.controller if controller.state == 'active'])
             if using_controllers.issubset(running):
                 return True
-        rate.sleep()
+        time.sleep(0.1)
     return False
 
 

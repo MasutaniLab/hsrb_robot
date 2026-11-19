@@ -44,13 +44,14 @@ def generate_launch_description():
 
     talk_hoya_node = Node(package='tmc_talk_hoya_py', executable='text_to_speech')
     odens_speech_node = Node(package='odens_speech', executable='tmc_talk_hoya_server')
+    audio_capture_node = Node(package='audio_common', executable='audio_capturer_node')
     imu_diag_updater_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('tmc_imu_diag_updater'), 'launch/diag_updater.launch.py')),
         launch_arguments={'input_topic_name': 'imu/data',
                           'sampling_hz': '100.0',
                           'expected_frame_id': 'base_imu_frame'}.items())
-    common_nodes = [talk_hoya_node, odens_speech_node, imu_diag_updater_launch]
+    common_nodes = [talk_hoya_node, odens_speech_node, audio_capture_node, imu_diag_updater_launch]
 
     if robot_name == 'hsrb':
         battery_state_node = Node(package='tmc_sanyo_battery', executable='sanyo_battery_node')
